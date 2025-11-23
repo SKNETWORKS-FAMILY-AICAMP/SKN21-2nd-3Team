@@ -5,4 +5,9 @@ seaborn>=0.12
 scipy>=1.7
 jupyter>=1.0
 ipykernel>=6.0
+<<<<<<< HEAD
 scikit-learn>=1.7.2
+=======
+scikit-learn>=2.3
+streamlit>=1.17.0
+>>>>>>> ac8f7f026ef5987bbc1dc49f6932ae2e34116754
