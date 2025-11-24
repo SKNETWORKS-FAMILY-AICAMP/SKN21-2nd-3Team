@@ -13,7 +13,7 @@
 
 - **객관적인 정확도 측정 방법 (CV)**
 
-  - **Stratified K‑Fold Cross‑Validation (K=5)** 을 적용해 클래스 비율을 유지하면서 5개의 폴드에서 모델을 학습·평가.
+  - **Stratified K‑Fold Cross‑Validation (K=5)** 을 적용해 클래스 비율(16%)을 유지하면서 5개의 폴드에서 모델을 학습·평가.
   - 각 폴드마다 **AUC‑ROC**, **F1‑Score**, **Recall**, **Precision** 등을 기록하고, 최종 성능은 평균값을 사용.
 
 - **평가 지표**
