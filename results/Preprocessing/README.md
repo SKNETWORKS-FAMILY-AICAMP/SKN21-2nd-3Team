@@ -25,6 +25,33 @@ Marital_Status             749            7.396
 
 ## 이상치 판정 기준과 처리 방법 및 이유
 
+**Log 변환 이상치 처리**
+
+* Total_Trans_Amt 로그 변환. 
+
+data['Log_Total_Trans_Amt'] = np.log1p(data['Total_Trans_Amt'])
+
+print("--- 로그 변환 결과 (Log_Total_Trans_Amt 열 추가) ---")
+print(data[['Total_Trans_Amt', 'Log_Total_Trans_Amt']].head().to_markdown(index=False, floatfmt=".4f"))
+
+* Total_Trans_Amt + Total_Revolving_Bal 로그 변환 (왜도 높은 컬럼처리)
+
+log_cols = ["Total_Trans_Amt", "Total_Revolving_Bal"]
+for col in log_cols:
+    if col in data.columns:
+        data[f"log_{col}"] = np.log1p(data[col])
+
+로그전환으로 통한 이상치 판정값이 필요했던 경우, 극단값이 매우 많았습니다.
+
+Ex.
+- Total_Trans_Amt (거래량)
+- Total_Revolving_Bal (잔액)
+
+같은 값들의 경우, 원본 값을 쓰면, 머신러닝 모델이 극단값에 과도하게 끝려가서, 이탈예측률이 불안정할수도있고, 성능도 떨어질수있습니다. 
+
+따라서 log 로 처리할경우, 튀어나오는 값이 없이 데이터 값에 분포가 부드러워져서 모델 균형에 발랜쓰를 줄수있습니다. 
+
+
 ## 기타 전처리 방법
 feature들과 target_col의 상관관계
 상관관계 계수가 높은 feature 처리방법
