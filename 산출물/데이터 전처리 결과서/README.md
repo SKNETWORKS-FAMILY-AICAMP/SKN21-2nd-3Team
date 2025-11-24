@@ -61,7 +61,7 @@ Activity_Index = Total_Trans_Amt × Total_Trans_Ct
 이 지표는 **전체적인 활동 강도(Activity Intensity)**를 의미하며,
 단일 변수를 볼 때보다 이탈 가능성을 더 강하게 설명하는 특징(Feature)이 됩니다.
 
-🚀 효과: ML 모델 예측력 향상
+**효과: ML 모델 예측력 향상**
 
 머신러닝 모델은 종종 조합된 Feature에서 더 높은 예측력을 보입니다.
 
