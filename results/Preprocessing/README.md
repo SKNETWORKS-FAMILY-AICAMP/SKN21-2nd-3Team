@@ -27,9 +27,31 @@
 - etc...
 
 ## 적용한 Feature Engineering 방식
+  * 비율 (Ratio): 숫자가 크거나 작거나의 결과값으로 추정하는것이 아니라, 숫자가 얼마만큼 변했는지를 보는 것이 중요할때 사용. 
+  * 조합기반 (Combination): 
+
 
 ### (1) Feature Scaling
+  * Linear 모델(Logistic, SVM) : StandardScaler / MinMaxScaler 적용.
+  * Tree 계열 모델(XGBoost/RandomForest) : Scaling 불필요.
 
 ### (2) Feature Selection
+  * 상관계수 기반 필터링.
+  * XGBoost Feature Importance 기반 선정.
 
 ### (3) Feature Engineering
+
+- 거래 변화율 지표: 
+  * 거래 급증 또는 급감 패턴이 이탈률과 유의한 상관관계를 가지는 점을 반영.
+  * 고객의 총 거래 횟수 대비 분기 변화율을 정규화한 지표.
+
+- 비활동 기간 리스크: 
+  * 고객의 금융 행동 안정성 / 불균형 신호를 모델이 인식하도록 유도.
+  * 비활동 개월 수 × 카드 사용률.
+
+- 고객 활동 점수: 
+  * 고객의 적극적인 활용성 점수가 낮다는 경향발견. 
+  * 거래 금액 + 거래 횟수 - 비활동 패널.
+
+- 카드 사용률 기반 위험 등급:
+  * 비선형적 위험 구간을 “범주형 라벨”로 모델에 제공.
