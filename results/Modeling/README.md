@@ -37,6 +37,9 @@
 
   - **Stratified K‑Fold Cross‑Validation (K=5)** 을 적용해 클래스 비율(16%)을 유지하면서 5개의 폴드에서 모델을 학습·평가.
   - 각 폴드마다 **AUC‑ROC**, **F1‑Score**, **Recall**, **Precision** 등을 기록하고, 최종 성능은 평균값을 사용.
+  - 두가지의 CV 방법 중에서 RMSE, MAE, MAPE를 기준으로 CV전략 선택
+    - K-Fold
+    - ✅ Stratify K-Fold
 
 - **평가 지표**
 
