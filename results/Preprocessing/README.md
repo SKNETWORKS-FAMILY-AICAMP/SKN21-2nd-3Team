@@ -27,3 +27,9 @@
 - etc...
 
 ## 적용한 Feature Engineering 방식
+
+### (1) Feature Scaling
+
+### (2) Feature Selection
+
+### (3) Feature Engineering
