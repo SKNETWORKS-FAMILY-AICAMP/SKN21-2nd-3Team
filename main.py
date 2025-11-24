@@ -1,5 +1,5 @@
 from src.cv import split_train_test, kfold_split, stratified_kfold_split
-from src.ensemble import train_logistic_regression, evaluate_model
+from src.ensemble import train_logistic_regression, evaluate_model, train_voting_ensemble, train_stacking_ensemble
 from src.preprocessing import load_data, preprocess_data   
 
 # 데이터 불러오기 및 전처리
@@ -34,8 +34,13 @@ if __name__ == '__main__':
         y_test = df.loc[test_idx, target_col]
 
         # fold별 모델 학습 및 평가
-        model = train_logistic_regression(X_train, y_train) # ensemble.py
+        # model = train_logistic_regression(X_train, y_train) # ensemble.py
+        # model = train_voting_ensemble(X_train, y_train) # ensemble.py
+        model = train_stacking_ensemble(X_train, y_train) # ensemble.py
+        print(f"Fold {i+1} 모델 학습 완료")
         evaluate_model(model, X_test, y_test)
+        print("\n")
+        print(f"Fold {i+1} 모델 평가 완료")
 
     # 모델 저장
     import joblib
