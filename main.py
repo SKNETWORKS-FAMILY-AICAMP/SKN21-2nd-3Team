@@ -6,15 +6,15 @@ from src.preprocessing import load_data, preprocess_data
 
 if __name__ == '__main__':
     df = load_data()
-    df = preprocess_data(df)
+    df = preprocess_data(df) # preprocessing.py
 
-    X_train, X_test, y_train, y_test = split_train_test(
+    X_train, X_test, y_train, y_test = split_train_test( # cv.py
         df, target_col='Attrition_Binary',
         test_size=0.2, 
         random_state=42
         )
     
-    model = train_logistic_regression(X_train, y_train)
+    model = train_logistic_regression(X_train, y_train) # ensemble.py
     evaluate_model(model, X_test, y_test)
 
     # 모델 저장
