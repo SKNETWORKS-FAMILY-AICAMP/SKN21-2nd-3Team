@@ -8,7 +8,13 @@ from xgboost import XGBClassifier
 import numpy as np
 
 ####################################
-def train_voting_ensemble(X_train, y_train, preprocessor, rf_weights=1, xgb_weights=2):
+def train_voting_ensemble(
+    X_train, 
+    y_train, 
+    preprocessor, 
+    rf_weights=1, 
+    xgb_weights=2
+    ):
     """
     Random Forest와 XGBoost를 결합한 소프트 투표 앙상블 모델을 학습시키는 함수.
 
@@ -79,7 +85,12 @@ trained_ensemble_model = train_voting_ensemble(
 ########################################
 
 
-def train_stacking_ensemble(X_train, y_train, preprocessor, cv_folds=5):
+def train_stacking_ensemble(
+    X_train, 
+    y_train, 
+    preprocessor, 
+    cv_folds=5
+    ):
     """
     Random Forest와 XGBoost를 기반으로 한 Stacking 앙상블 모델을 학습시키는 함수.
 
