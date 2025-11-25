@@ -32,7 +32,7 @@ def split_train_test(
     return X_train, X_test, y_train, y_test
 
 
-def kfold_split(df, n_splits=5, shuffle=False, random_state=None):
+def kfold_split(df, n_splits=5, shuffle=False, random_state=42):
     """Generate K-Fold cross‑validation splits.
 
     Parameters
@@ -55,7 +55,7 @@ def kfold_split(df, n_splits=5, shuffle=False, random_state=None):
     return list(kf.split(df))
 
 
-def stratified_kfold_split(df, target_col='Attrition_Binary', n_splits=5, shuffle=False, random_state=None):
+def stratified_kfold_split(df, target_col='Attrition_Binary', n_splits=5, shuffle=False, random_state=42):
     """Generate stratified K‑Fold splits preserving class distribution.
 
     Parameters
