@@ -1,11 +1,12 @@
+import pandas as pd
+import os
+from typing import Dict
 from src.cv import split_train_test, kfold_split, stratified_kfold_split
 from src.ensemble import train_logistic_regression, evaluate_model, train_stacking_ensemble, train_voting_ensemble
-from src.preprocessing import load_data, preprocess_pipeline, drop_column, replace_nan_value, add_feature_engineering, select_features
-
+from src.preprocessing import load_data, preprocess_pipeline, drop_column, feature_engineering_pipeline
 # 데이터 불러오기 및 전처리
 
 def run(
-    self,
     df: pd.DataFrame,
     target_col: str = "Attrition_Binary",
     is_preprocess: bool = True,
@@ -38,6 +39,8 @@ def run(
     if is_feature_engineering:
         df = feature_engineering_pipeline(df)
     
+    cols = df.drop(columns=('Attrition_Binary'))
+    features = cols.columns.tolist()
     if is_cv:
         folds = stratified_kfold_split(df, target_col=target_col, n_splits=5, shuffle=True, random_state=42)
         for i, (train_idx, test_idx) in enumerate(folds):
@@ -75,7 +78,7 @@ def run(
 if __name__ == '__main__':
     df = load_data()
     run(
-        df,
+        df=df,
         is_preprocess=True,
         is_feature_engineering=True,
         is_cv=True,
