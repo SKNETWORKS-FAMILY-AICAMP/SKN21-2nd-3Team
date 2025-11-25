@@ -39,7 +39,7 @@ def run(
 
     if is_feature_engineering:
         df = feature_engineering_pipeline(df)
-    
+    print(df.shape)
     cols = df.drop(columns=('Attrition_Binary'))
     features = cols.columns.tolist()
     if is_cv:
