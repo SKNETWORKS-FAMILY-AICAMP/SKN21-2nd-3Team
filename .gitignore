@@ -49,8 +49,12 @@ data/processed/
 # Logs
 *.log
 
+<<<<<<< Updated upstream
 02_Baseline.ipynb
 
 # 개인 노트북 폴더
 **/notebook
 notebook
+=======
+02_Baseline.ipynb
+>>>>>>> Stashed changes

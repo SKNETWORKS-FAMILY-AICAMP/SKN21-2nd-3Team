@@ -54,6 +54,7 @@ def run(
 
             if is_ensemble:
                 if ensemble_strategy == 'stacking':
+<<<<<<< Updated upstream
                     model = train_stacking_ensemble(X_train, y_train) # ensemble.py
                 else:
                     model = train_voting_ensemble(X_train, y_train) # ensemble.py
@@ -62,11 +63,20 @@ def run(
             f1, roc = evaluate_model(model, X_test, y_test, fold_num=i, n_splits=5)
             f1_list.append(f1)
             roc_list.append(roc)
+=======
+                    model = train_stacking_ensemble(X_train, y_train, tuning_strategy=tuning_strategy) # ensemble.py
+                else:
+                    model = train_voting_ensemble(X_train, y_train, tuning_strategy=tuning_strategy) # ensemble.py
+            else:
+                model = train_logistic_regression(X_train, y_train)
+            evaluate_model(model, X_test, y_test, fold_num=i, n_splits=5)
+>>>>>>> Stashed changes
     else:
         # 일반적인 Fold
         X_train, X_test, y_train, y_test = split_train_test(df, target_col)
         if is_ensemble:
             if ensemble_strategy == 'stacking':
+<<<<<<< Updated upstream
                 model = train_stacking_ensemble(X_train, y_train) # ensemble.py
             else:
                 model = train_voting_ensemble(X_train, y_train) # ensemble.py
@@ -78,6 +88,15 @@ def run(
     print(f"roc_list: {roc_list}")
     print(f"f1_mean: {np.mean(f1_list)}")
     print(f"roc_mean: {np.mean(roc_list)}")
+=======
+                model = train_stacking_ensemble(X_train, y_train, tuning_strategy=tuning_strategy) # ensemble.py
+            else:
+                model = train_voting_ensemble(X_train, y_train, tuning_strategy=tuning_strategy) # ensemble.py
+        else:
+            model = train_logistic_regression(X_train, y_train)
+        evaluate_model(model, X_test, y_test, fold_num=i, n_splits=5)
+
+>>>>>>> Stashed changes
     if is_save:
         save_dir = 'results/Final_Model'
         os.makedirs(save_dir, exist_ok=True)
