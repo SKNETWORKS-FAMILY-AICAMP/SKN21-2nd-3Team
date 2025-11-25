@@ -53,24 +53,27 @@ def run(
     y_full = df[target_col]
     
     # 2️⃣ 튜닝 (한 번만!)
+    tuned_params = None  # 튜닝된 파라미터 저장용
     if tuning_strategy is not None:
         print(f"\n2️⃣ 하이퍼파라미터 튜닝 ({tuning_strategy})")
         print("   ⚡ 전체 데이터로 한 번만 튜닝...")
         
         # 전체 데이터로 튜닝하여 최적 파라미터 찾기
         if ensemble_strategy == 'stacking':
-            tuned_model = train_stacking_ensemble(
+            tuned_model, tuned_params = train_stacking_ensemble(
                 X_full, y_full,
                 cv_strategy=cv_strategy,
                 tuning_strategy=tuning_strategy,
-                n_trials=50  # 필요시 조정
+                n_trials=50,  # 필요시 조정
+                return_params=True
             )
         elif ensemble_strategy == 'voting':
-            tuned_model = train_voting_ensemble(
+            tuned_model, tuned_params = train_voting_ensemble(
                 X_full, y_full,
                 cv_strategy=cv_strategy,
                 tuning_strategy=tuning_strategy,
-                n_trials=50
+                n_trials=50,
+                return_params=True
             )
         
         print("   ✅ 튜닝 완료! 최적 파라미터 찾음")
@@ -113,13 +116,15 @@ def run(
             model = train_stacking_ensemble(
                 X_train, y_train,
                 cv_strategy=cv_strategy,
-                tuning_strategy=None  # 👈 튜닝 안 함!
+                tuning_strategy=None,  # 👈 튜닝 안 함!
+                best_params=tuned_params  # 👈 튜닝된 파라미터 재사용
             )
         elif ensemble_strategy == 'voting':
             model = train_voting_ensemble(
                 X_train, y_train,
                 cv_strategy=cv_strategy,
-                tuning_strategy=None  # 👈 튜닝 안 함!
+                tuning_strategy=None,  # 👈 튜닝 안 함!
+                best_params=tuned_params  # 👈 튜닝된 파라미터 재사용
             )
         else:  # logistic
             model = train_logistic_regression(X_train, y_train)
@@ -158,13 +163,15 @@ def run(
             final_model = train_stacking_ensemble(
                 X_full, y_full,
                 cv_strategy=cv_strategy,
-                tuning_strategy=tuning_strategy  # 처음 튜닝한 결과 재사용
+                tuning_strategy=None,  # 👈 튜닝 안 함
+                best_params=tuned_params  # 👈 튜닝된 파라미터 재사용
             )
         elif ensemble_strategy == 'voting':
             final_model = train_voting_ensemble(
                 X_full, y_full,
                 cv_strategy=cv_strategy,
-                tuning_strategy=tuning_strategy
+                tuning_strategy=None,  # 👈 튜닝 안 함
+                best_params=tuned_params  # 👈 튜닝된 파라미터 재사용
             )
         else:
             final_model = train_logistic_regression(X_full, y_full)

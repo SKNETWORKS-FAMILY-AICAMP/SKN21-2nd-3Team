@@ -141,18 +141,13 @@ def preprocess_for_inference(df, model):
     
     # 4. Feature Alignment using model.feature_names_in_
     if hasattr(model, 'feature_names_in_'):
-        # Add missing columns with 0
-        missing_cols = set(model.feature_names_in_) - set(df_processed.columns)
-        for c in missing_cols:
-            df_processed[c] = 0
-            
         # Drop extra columns
         extra_cols = set(df_processed.columns) - set(model.feature_names_in_)
         df_processed = df_processed.drop(columns=list(extra_cols))
         
         # Reorder columns
         df_processed = df_processed[model.feature_names_in_]
-        
+    
     return df_processed
 
 def predict_churn(model, df):
@@ -165,11 +160,13 @@ def predict_churn(model, df):
     # Preprocess
     X = preprocess_for_inference(df, model)
     
+    # Handle potential attribute errors in ensemble models
+
     # Predict
     probs = model.predict_proba(X)[:, 1] # Probability of class 1 (Attrition)
-    
+
     # Add to dataframe
     df_out['이탈 확률'] = probs
-    df_out['이탈 위험'] = probs > 0.5 # Threshold 0.5
+    df_out['이탈 위험'] = probs > 0.8 # Threshold 0.8
     
     return df_out

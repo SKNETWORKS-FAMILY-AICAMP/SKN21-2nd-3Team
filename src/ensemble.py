@@ -79,6 +79,67 @@ def _get_cv_splitter(
         )
 
 ####################################
+# 📌 공통 함수: 파라미터로부터 모델 생성
+####################################
+def _create_base_models_from_params(
+    best_params: Dict[str, Dict],
+    scale_pos_weight: float
+) -> List[Tuple[str, Any]]:
+    """
+    저장된 최적 파라미터로 모델을 생성합니다.
+    
+    Args:
+        best_params: {'rf': {...}, 'xgb': {...}, 'lgbm': {...}} 형태의 파라미터 딕셔너리
+        scale_pos_weight: 클래스 불균형 가중치
+    
+    Returns:
+        List[Tuple[str, model]]: 생성된 모델 리스트
+    """
+    estimators = []
+    
+    # Random Forest
+    if 'rf' in best_params:
+        rf_params = best_params['rf'].copy()
+        # 고정 파라미터 추가
+        rf_params.update({
+            'class_weight': 'balanced',
+            'random_state': 42,
+            'n_jobs': -1
+        })
+        rf_model = RandomForestClassifier(**rf_params)
+        estimators.append(('rf', rf_model))
+    
+    # XGBoost
+    if 'xgb' in best_params:
+        xgb_params = best_params['xgb'].copy()
+        # 고정 파라미터 추가
+        xgb_params.update({
+            'scale_pos_weight': scale_pos_weight,
+            'eval_metric': 'logloss',
+            'random_state': 42,
+            'n_jobs': -1,
+            'verbosity': 0
+        })
+        xgb_model = XGBClassifier(**xgb_params)
+        estimators.append(('xgb', xgb_model))
+    
+    # LightGBM
+    if 'lgbm' in best_params:
+        lgbm_params = best_params['lgbm'].copy()
+        # 고정 파라미터 추가
+        lgbm_params.update({
+            'scale_pos_weight': scale_pos_weight,
+            'random_state': 42,
+            'n_jobs': -1,
+            'verbosity': -1
+        })
+        lgbm_model = LGBMClassifier(**lgbm_params)
+        estimators.append(('lgbm', lgbm_model))
+    
+    return estimators
+
+
+####################################
 # 📌 공통 함수: 기본 모델 생성 및 튜닝
 ####################################
 def _create_base_models(
@@ -87,8 +148,9 @@ def _create_base_models(
     y_train: Optional[pd.Series] = None,
     tuning_strategy: Optional[str] = None,
     cv: int = 5,
-    n_trials: int = 50
-) -> List[Tuple[str, Any]]:
+    n_trials: int = 50,
+    return_params: bool = False
+) -> Union[List[Tuple[str, Any]], Tuple[List[Tuple[str, Any]], Dict]]:
     """
     앙상블에 사용할 기본 모델들(Random Forest, XGBoost, LightGBM)을 생성합니다.
     선택적으로 하이퍼파라미터 튜닝을 수행할 수 있습니다.
@@ -135,7 +197,7 @@ def _create_base_models(
             )
         print(f"\n🔧 하이퍼파라미터 튜닝 모드: {tuning_strategy}")
         print(f"   데이터 크기: {X_train.shape}, CV={cv}, Trials={n_trials}")
-        return _tune_base_models(
+        tuned_estimators, best_params = _tune_base_models(
             X_train=X_train,
             y_train=y_train,
             scale_pos_weight=scale_pos_weight,
@@ -143,6 +205,9 @@ def _create_base_models(
             cv=cv,
             n_trials=n_trials
         )
+        if return_params:
+            return tuned_estimators, best_params
+        return tuned_estimators
     
     # 📦 기본 모드: 미리 정의된 하이퍼파라미터 사용
     print("\n⚡ 기본 파라미터 모드 (튜닝 없음)")
@@ -184,11 +249,22 @@ def _create_base_models(
         verbosity=-1
     )
 
-    return [
+    estimators = [
         ('rf', rf_model),
         ('xgb', xgb_model),
         ('lgbm', lgbm_model)
     ]
+    
+    # 기본 파라미터 저장
+    default_params = {
+        'rf': rf_model.get_params(),
+        'xgb': xgb_model.get_params(),
+        'lgbm': lgbm_model.get_params()
+    }
+    
+    if return_params:
+        return estimators, default_params
+    return estimators
 
 
 ####################################
@@ -201,7 +277,7 @@ def _tune_base_models(
     tuning_strategy: str = 'optuna',
     cv: int = 5,
     n_trials: int = 50
-) -> List[Tuple[str, Any]]:
+) -> Tuple[List[Tuple[str, Any]], Dict[str, Dict]]:
     """
     각 기본 모델의 하이퍼파라미터를 튜닝합니다.
     
@@ -214,11 +290,15 @@ def _tune_base_models(
     - Random Forest: n_estimators, max_depth, min_samples_split
     - XGBoost: learning_rate, max_depth, subsample, colsample_bytree
     - LightGBM: learning_rate, num_leaves, max_depth
+    
+    Returns:
+        Tuple[estimators, best_params]: (모델 리스트, 최적 파라미터 딕셔너리)
     """
     from src.tuner import grid_search_tuner, random_search_tuner, optuna_tuner
     import optuna
     
     tuned_models = []
+    best_params = {}
     
     # 🌲 Random Forest 튜닝
     print("\n🌲 Random Forest 튜닝 중...")
@@ -269,6 +349,7 @@ def _tune_base_models(
     print(f"   ✅ 최적 파라미터: {rf_params}")
     print(f"   ✅ CV 점수: {rf_score:.4f}")
     tuned_models.append(('rf', rf_best))
+    best_params['rf'] = rf_params
     
     # 🚀 XGBoost 튜닝
     print("\n🚀 XGBoost 튜닝 중...")
@@ -316,6 +397,7 @@ def _tune_base_models(
     print(f"   ✅ 최적 파라미터: {xgb_params}")
     print(f"   ✅ CV 점수: {xgb_score:.4f}")
     tuned_models.append(('xgb', xgb_best))
+    best_params['xgb'] = xgb_params
     
     # 💡 LightGBM 튜닝
     print("\n💡 LightGBM 튜닝 중...")
@@ -365,10 +447,11 @@ def _tune_base_models(
     print(f"   ✅ 최적 파라미터: {lgbm_params}")
     print(f"   ✅ CV 점수: {lgbm_score:.4f}")
     tuned_models.append(('lgbm', lgbm_best))
+    best_params['lgbm'] = lgbm_params
     
     print("\n🎉 모든 모델 튜닝 완료!\n")
     
-    return tuned_models
+    return tuned_models, best_params
 
 
 ####################################
@@ -379,13 +462,15 @@ def train_voting_ensemble(
     y_train: pd.Series, 
     cv_strategy: Optional[str] = 'stratified_kfold',  # CV 전략
     tuning_strategy: Optional[str] = None,  # 튜닝 전략
+    best_params: Optional[Dict] = None,  # 튜닝된 파라미터 (재사용)
     rf_weight: int = 1,
     xgb_weight: int = 2,
     lgbm_weight: int = 2,
     voting: str = 'soft',
     n_splits: int = 5,
-    n_trials: int = 50
-) -> VotingClassifier:
+    n_trials: int = 50,
+    return_params: bool = False  # 파라미터 반환 여부
+) -> Union[VotingClassifier, Tuple[VotingClassifier, Dict]]:
     """
     Voting Classifier 학습 (투표 기반 앙상블)
     
@@ -409,14 +494,36 @@ def train_voting_ensemble(
     cv_splitter = _get_cv_splitter(cv_strategy, n_splits)
     
     # 기본 모델 생성
-    estimators = _create_base_models(
-        scale_pos_weight=scale_pos_weight,
-        X_train=X_train,
-        y_train=y_train,
-        tuning_strategy=tuning_strategy,
-        cv=cv_splitter,
-        n_trials=n_trials
-    )
+    if best_params is not None:
+        # 튜닝된 파라미터 재사용
+        print("\n⚡ 튜닝된 파라미터 재사용")
+        estimators = _create_base_models_from_params(
+            best_params=best_params,
+            scale_pos_weight=scale_pos_weight
+        )
+        extracted_params = best_params
+    elif return_params:
+        # 튜닝하고 파라미터 추출
+        estimators, extracted_params = _create_base_models(
+            scale_pos_weight=scale_pos_weight,
+            X_train=X_train,
+            y_train=y_train,
+            tuning_strategy=tuning_strategy,
+            cv=cv_splitter,
+            n_trials=n_trials,
+            return_params=True
+        )
+    else:
+        # 일반적인 경우
+        estimators = _create_base_models(
+            scale_pos_weight=scale_pos_weight,
+            X_train=X_train,
+            y_train=y_train,
+            tuning_strategy=tuning_strategy,
+            cv=cv_splitter,
+            n_trials=n_trials
+        )
+        extracted_params = None
 
     # Voting 앙상블 생성 및 학습
     voting_model = VotingClassifier(
@@ -428,6 +535,8 @@ def train_voting_ensemble(
     voting_model.fit(X_train, y_train)
     print("✅ 학습 완료!")
     
+    if return_params:
+        return voting_model, extracted_params
     return voting_model
 
 
@@ -439,10 +548,12 @@ def train_stacking_ensemble(
     y_train: pd.Series, 
     cv_strategy: Optional[str] = 'stratified_kfold',  # CV 전략
     tuning_strategy: Optional[str] = None,  # 튜닝 전략
+    best_params: Optional[Dict] = None,  # 튜닝된 파라미터 (재사용)
     final_estimator: Optional[Any] = None,
     n_splits: int = 5,
-    n_trials: int = 50
-) -> StackingClassifier:
+    n_trials: int = 50,
+    return_params: bool = False  # 파라미터 반환 여부
+) -> Union[StackingClassifier, Tuple[StackingClassifier, Dict]]:
     """
     Stacking Classifier 학습 (스태킹 앙상블)
     
@@ -469,14 +580,36 @@ def train_stacking_ensemble(
     cv_splitter = _get_cv_splitter(cv_strategy, n_splits)
     
     # 기본 모델 생성
-    estimators = _create_base_models(
-        scale_pos_weight=scale_pos_weight,
-        X_train=X_train,
-        y_train=y_train,
-        tuning_strategy=tuning_strategy,
-        cv=cv_splitter,
-        n_trials=n_trials
-    )
+    if best_params is not None:
+        # 튜닝된 파라미터 재사용
+        print("\n⚡ 튜닝된 파라미터 재사용")
+        estimators = _create_base_models_from_params(
+            best_params=best_params,
+            scale_pos_weight=scale_pos_weight
+        )
+        extracted_params = best_params
+    elif return_params:
+        # 튜닝하고 파라미터 추출
+        estimators, extracted_params = _create_base_models(
+            scale_pos_weight=scale_pos_weight,
+            X_train=X_train,
+            y_train=y_train,
+            tuning_strategy=tuning_strategy,
+            cv=cv_splitter,
+            n_trials=n_trials,
+            return_params=True
+        )
+    else:
+        # 일반적인 경우
+        estimators = _create_base_models(
+            scale_pos_weight=scale_pos_weight,
+            X_train=X_train,
+            y_train=y_train,
+            tuning_strategy=tuning_strategy,
+            cv=cv_splitter,
+            n_trials=n_trials
+        )
+        extracted_params = None
 
     # 메타 모델 설정
     if final_estimator is None:
@@ -498,6 +631,8 @@ def train_stacking_ensemble(
     stacking_model.fit(X_train, y_train)
     print("✅ 학습 완료!")
     
+    if return_params:
+        return stacking_model, extracted_params
     return stacking_model
 
 
