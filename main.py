@@ -7,6 +7,7 @@ import numpy as np
 import os
 import joblib
 from typing import Dict, List, Optional
+from typing import Dict, List, Optional
 
 from src.cv import stratified_kfold_split, kfold_split
 from src.ensemble import train_stacking_ensemble, train_voting_ensemble, train_logistic_regression, evaluate_model
@@ -26,6 +27,9 @@ def run(
     """
     머신러닝 파이프라인 실행
     
+    💡 핵심 개선:
+    - 튜닝은 한 번만 수행 (전체 데이터로)
+    - CV 평가는 튜닝된 파라미터로 수행
     💡 핵심 개선:
     - 튜닝은 한 번만 수행 (전체 데이터로)
     - CV 평가는 튜닝된 파라미터로 수행
@@ -80,6 +84,37 @@ def run(
     
     # 3️⃣ CV 설정
     print(f"\n3️⃣ CV 전략: {cv_strategy or '단순 분할'}")
+    X_full = df[features]
+    y_full = df[target_col]
+    
+    # 2️⃣ 튜닝 (한 번만!)
+    best_params = None
+    if tuning_strategy is not None:
+        print(f"\n2️⃣ 하이퍼파라미터 튜닝 ({tuning_strategy})")
+        print("   ⚡ 전체 데이터로 한 번만 튜닝...")
+        
+        # 전체 데이터로 튜닝하여 최적 파라미터 찾기
+        if ensemble_strategy == 'stacking':
+            tuned_model = train_stacking_ensemble(
+                X_full, y_full,
+                cv_strategy=cv_strategy,
+                tuning_strategy=tuning_strategy,
+                n_trials=50  # 필요시 조정
+            )
+        elif ensemble_strategy == 'voting':
+            tuned_model = train_voting_ensemble(
+                X_full, y_full,
+                cv_strategy=cv_strategy,
+                tuning_strategy=tuning_strategy,
+                n_trials=50
+            )
+        
+        print("   ✅ 튜닝 완료! 최적 파라미터 찾음")
+    else:
+        print(f"\n2️⃣ 튜닝 스킵 (기본 파라미터 사용)")
+    
+    # 3️⃣ CV 설정
+    print(f"\n3️⃣ CV 전략: {cv_strategy or '단순 분할'}")
     if cv_strategy == 'stratified_kfold':
         folds = stratified_kfold_split(df, target_col=target_col, n_splits=5, shuffle=True, random_state=42)
     elif cv_strategy == 'kfold':
@@ -92,7 +127,10 @@ def run(
     
     # 4️⃣ 각 폴드에서 평가 (튜닝 안 함!)
     print(f"\n4️⃣ 모델 평가 (각 폴드)")
+    # 4️⃣ 각 폴드에서 평가 (튜닝 안 함!)
+    print(f"\n4️⃣ 모델 평가 (각 폴드)")
     print(f"   모델: {ensemble_strategy}")
+    print(f"   {'✅ 튜닝된 파라미터 사용' if tuning_strategy else '기본 파라미터 사용'}\n")
     print(f"   {'✅ 튜닝된 파라미터 사용' if tuning_strategy else '기본 파라미터 사용'}\n")
     
     cv_results = []
@@ -110,15 +148,20 @@ def run(
         y_val = df.loc[val_idx, target_col]
         
         # 모델 학습 (튜닝 없이!)
+        # 모델 학습 (튜닝 없이!)
         if ensemble_strategy == 'stacking':
             model = train_stacking_ensemble(
                 X_train, y_train,
+                cv_strategy=cv_strategy,
+                tuning_strategy=None  # 👈 튜닝 안 함!
                 cv_strategy=cv_strategy,
                 tuning_strategy=None  # 👈 튜닝 안 함!
             )
         elif ensemble_strategy == 'voting':
             model = train_voting_ensemble(
                 X_train, y_train,
+                cv_strategy=cv_strategy,
+                tuning_strategy=None  # 👈 튜닝 안 함!
                 cv_strategy=cv_strategy,
                 tuning_strategy=None  # 👈 튜닝 안 함!
             )
@@ -135,6 +178,7 @@ def run(
         cv_results.append(metrics)
         models.append(model)
     
+    # 5️⃣ 결과 요약
     # 5️⃣ 결과 요약
     print(f"\n{'='*80}")
     print("📊 최종 결과 요약")
@@ -171,7 +215,9 @@ def run(
             final_model = train_logistic_regression(X_full, y_full)
     
     # 7️⃣ 모델 저장
+    # 7️⃣ 모델 저장
     if is_save:
+        print(f"\n7️⃣ 모델 저장...")
         print(f"\n7️⃣ 모델 저장...")
         save_dir = 'results/Final_Model'
         os.makedirs(save_dir, exist_ok=True)
