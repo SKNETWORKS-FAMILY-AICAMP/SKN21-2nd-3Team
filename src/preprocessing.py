@@ -5,7 +5,7 @@ import sys
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PROJECT_ROOT)
-csv_file_path = sys.path[-1] + r"\data\raw\BankChurners.csv"
+csv_file_path = sys.path[-1] + r"/data/raw/BankChurners.csv"
 
 
 def load_data(csv_file_path = csv_file_path):
@@ -83,9 +83,12 @@ def add_feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
 
     return df 
 
-def preprocess_data(df):
+def select_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Feature Selection"""
     df = df.copy()
+    
 
+def preprocess_pipeline(df):
 	# 전처리 파이프라인
 	# 1. 필요없는 칼럼 드랍
 	# 2. nan값 채우기
@@ -95,6 +98,13 @@ def preprocess_data(df):
     df = replace_nan_value(df)
     df = add_feature_engineering(df)
 
+    return df
+
+def feature_engineering(df):
+    """Feature Engineering"""
+    df = df.copy()
+    df = add_feature_engineering(df)
+	df = select_features(df)
     return df
 
 import pandas as pd
@@ -107,6 +117,3 @@ if __name__ == "__main__":
 	df = preprocess_data(df)
 	# print(df['Attrition_Binary'].value_counts())
 	pass
-
-
-	
