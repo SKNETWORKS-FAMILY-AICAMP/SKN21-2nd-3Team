@@ -22,6 +22,7 @@ def run(
     tuning_strategy: str = None,  # None, 'optuna', 'grid_search', 'random_search'
     ensemble_strategy: str = 'stacking',  # 'stacking', 'voting', 'logistic'
     is_save: bool = True,
+    use_gpu: bool = False,  # GPU 가속 사용 여부 (XGBoost, LightGBM)
 ) -> Dict:
     """
     머신러닝 파이프라인 실행
@@ -29,6 +30,21 @@ def run(
     💡 핵심 개선:
     - 튜닝은 한 번만 수행 (전체 데이터로)
     - CV 평가는 튜닝된 파라미터로 수행
+    - GPU 가속 지원 (XGBoost, LightGBM)
+    
+    Args:
+        df: 입력 데이터프레임
+        target_col: 타겟 컬럼명
+        is_preprocess: 전처리 수행 여부
+        is_feature_engineering: 피처 엔지니어링 수행 여부
+        cv_strategy: CV 전략 ('stratified_kfold', 'kfold', None)
+        tuning_strategy: 튜닝 전략 (None, 'optuna', 'grid_search', 'random_search')
+        ensemble_strategy: 앙상블 전략 ('stacking', 'voting', 'logistic')
+        is_save: 모델 저장 여부
+        use_gpu: GPU 가속 사용 여부 (CUDA 필요)
+    
+    Returns:
+        Dict: cv_results, summary, best_fold_model
     """
     
     print(f"\n{'='*80}")
@@ -65,7 +81,8 @@ def run(
                 cv_strategy=cv_strategy,
                 tuning_strategy=tuning_strategy,
                 n_trials=50,  # 필요시 조정
-                return_params=True
+                return_params=True,
+                use_gpu=use_gpu
             )
         elif ensemble_strategy == 'voting':
             tuned_model, tuned_params = train_voting_ensemble(
@@ -73,7 +90,8 @@ def run(
                 cv_strategy=cv_strategy,
                 tuning_strategy=tuning_strategy,
                 n_trials=50,
-                return_params=True
+                return_params=True,
+                use_gpu=use_gpu
             )
         
         print("   ✅ 튜닝 완료! 최적 파라미터 찾음")
@@ -117,14 +135,16 @@ def run(
                 X_train, y_train,
                 cv_strategy=cv_strategy,
                 tuning_strategy=None,  # 👈 튜닝 안 함!
-                best_params=tuned_params  # 👈 튜닝된 파라미터 재사용
+                best_params=tuned_params,  # 👈 튜닝된 파라미터 재사용
+                use_gpu=use_gpu
             )
         elif ensemble_strategy == 'voting':
             model = train_voting_ensemble(
                 X_train, y_train,
                 cv_strategy=cv_strategy,
                 tuning_strategy=None,  # 👈 튜닝 안 함!
-                best_params=tuned_params  # 👈 튜닝된 파라미터 재사용
+                best_params=tuned_params,  # 👈 튜닝된 파라미터 재사용
+                use_gpu=use_gpu
             )
         else:  # logistic
             model = train_logistic_regression(X_train, y_train)
@@ -164,14 +184,16 @@ def run(
                 X_full, y_full,
                 cv_strategy=cv_strategy,
                 tuning_strategy=None,  # 👈 튜닝 안 함
-                best_params=tuned_params  # 👈 튜닝된 파라미터 재사용
+                best_params=tuned_params,  # 👈 튜닝된 파라미터 재사용
+                use_gpu=use_gpu
             )
         elif ensemble_strategy == 'voting':
             final_model = train_voting_ensemble(
                 X_full, y_full,
                 cv_strategy=cv_strategy,
                 tuning_strategy=None,  # 👈 튜닝 안 함
-                best_params=tuned_params  # 👈 튜닝된 파라미터 재사용
+                best_params=tuned_params,  # 👈 튜닝된 파라미터 재사용
+                use_gpu=use_gpu
             )
         else:
             final_model = train_logistic_regression(X_full, y_full)
@@ -210,5 +232,6 @@ if __name__ == '__main__':
         cv_strategy='stratified_kfold',  # 'stratified_kfold', 'kfold', None
         tuning_strategy='optuna',  # None, 'optuna', 'grid_search', 'random_search'
         ensemble_strategy='voting',  # 'stacking', 'voting', 'logistic'
-        is_save=False
+        is_save=False,
+        use_gpu=True  # GPU 가속 활성화 (XGBoost, LightGBM)
     )

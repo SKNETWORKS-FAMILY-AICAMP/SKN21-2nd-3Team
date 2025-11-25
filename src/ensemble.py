@@ -21,6 +21,55 @@ from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 
 
+def _check_cuda_available() -> bool:
+    """CUDA가 사용 가능한지 체크합니다."""
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except ImportError:
+        # torch가 없으면 다른 방법으로 체크
+        try:
+            import subprocess
+            result = subprocess.run(['nvidia-smi'], capture_output=True, text=True)
+            return result.returncode == 0
+        except:
+            return False
+
+
+def _apply_gpu_defaults(params: Dict[str, Any], model_key: str, use_gpu: bool) -> Dict[str, Any]:
+    """
+    GPU 사용 시 각 모델에 필요한 기본 파라미터를 적용합니다.
+    
+    XGBoost 3.x 버전부터는 device='cuda'와 tree_method='hist'를 사용합니다.
+    실제로 CUDA가 사용 가능한지 먼저 체크합니다.
+    """
+    if not use_gpu:
+        return params
+
+    params = params.copy()
+    
+    # 실제로 CUDA가 사용 가능한지 체크
+    cuda_available = _check_cuda_available()
+    
+    if model_key == 'xgb':
+        if cuda_available:
+            # CUDA 사용 가능: GPU 모드 활성화
+            params.setdefault('device', 'cuda')
+            params.setdefault('tree_method', 'hist')
+        else:
+            # CUDA 사용 불가: CPU 모드로 fallback
+            params.setdefault('device', 'cpu')
+            params.setdefault('tree_method', 'hist')
+    elif model_key == 'lgbm':
+        if cuda_available:
+            params.setdefault('device', 'gpu')
+            params.setdefault('gpu_platform_id', 0)
+            params.setdefault('gpu_device_id', 0)
+        else:
+            params.setdefault('device', 'cpu')
+    return params
+
+
 ####################################
 # 🔧 CV 헬퍼 함수
 ####################################
@@ -83,7 +132,8 @@ def _get_cv_splitter(
 ####################################
 def _create_base_models_from_params(
     best_params: Dict[str, Dict],
-    scale_pos_weight: float
+    scale_pos_weight: float,
+    use_gpu: bool = False
 ) -> List[Tuple[str, Any]]:
     """
     저장된 최적 파라미터로 모델을 생성합니다.
@@ -91,6 +141,7 @@ def _create_base_models_from_params(
     Args:
         best_params: {'rf': {...}, 'xgb': {...}, 'lgbm': {...}} 형태의 파라미터 딕셔너리
         scale_pos_weight: 클래스 불균형 가중치
+        use_gpu: GPU 가속 사용 여부
     
     Returns:
         List[Tuple[str, model]]: 생성된 모델 리스트
@@ -120,7 +171,7 @@ def _create_base_models_from_params(
             'n_jobs': -1,
             'verbosity': 0
         })
-        xgb_model = XGBClassifier(**xgb_params)
+        xgb_model = XGBClassifier(**_apply_gpu_defaults(xgb_params, 'xgb', use_gpu))
         estimators.append(('xgb', xgb_model))
     
     # LightGBM
@@ -133,7 +184,7 @@ def _create_base_models_from_params(
             'n_jobs': -1,
             'verbosity': -1
         })
-        lgbm_model = LGBMClassifier(**lgbm_params)
+        lgbm_model = LGBMClassifier(**_apply_gpu_defaults(lgbm_params, 'lgbm', use_gpu))
         estimators.append(('lgbm', lgbm_model))
     
     return estimators
@@ -149,7 +200,8 @@ def _create_base_models(
     tuning_strategy: Optional[str] = None,
     cv: int = 5,
     n_trials: int = 50,
-    return_params: bool = False
+    return_params: bool = False,
+    use_gpu: bool = False
 ) -> Union[List[Tuple[str, Any]], Tuple[List[Tuple[str, Any]], Dict]]:
     """
     앙상블에 사용할 기본 모델들(Random Forest, XGBoost, LightGBM)을 생성합니다.
@@ -170,6 +222,7 @@ def _create_base_models(
             - 'optuna': Optuna 베이지안 최적화 (추천!)
         cv (int): 교차 검증 폴드 수
         n_trials (int): Optuna/RandomSearch 시도 횟수
+        use_gpu (bool): GPU 가속 사용 여부 (지원 모델만 적용)
     
     Returns:
         List[Tuple[str, model]]: (모델이름, 모델객체) 튜플의 리스트
@@ -203,7 +256,8 @@ def _create_base_models(
             scale_pos_weight=scale_pos_weight,
             tuning_strategy=tuning_strategy,
             cv=cv,
-            n_trials=n_trials
+            n_trials=n_trials,
+            use_gpu=use_gpu
         )
         if return_params:
             return tuned_estimators, best_params
@@ -223,31 +277,33 @@ def _create_base_models(
     )
 
     # 🚀 XGBoost 설정
-    xgb_model = XGBClassifier(
-        n_estimators=200,
-        learning_rate=0.05,
-        max_depth=5,
-        subsample=0.9,
-        colsample_bytree=0.9,
-        scale_pos_weight=scale_pos_weight,
-        eval_metric="logloss",
-        random_state=42,
-        n_jobs=-1,
-        verbosity=0
-    )
+    xgb_defaults = {
+        'n_estimators': 200,
+        'learning_rate': 0.05,
+        'max_depth': 5,
+        'subsample': 0.9,
+        'colsample_bytree': 0.9,
+        'scale_pos_weight': scale_pos_weight,
+        'eval_metric': "logloss",
+        'random_state': 42,
+        'n_jobs': -1,
+        'verbosity': 0
+    }
+    xgb_model = XGBClassifier(**_apply_gpu_defaults(xgb_defaults, 'xgb', use_gpu))
 
     # 💡 LightGBM 설정
-    lgbm_model = LGBMClassifier(
-        n_estimators=200,
-        learning_rate=0.05,
-        max_depth=5,
-        subsample=0.9,
-        colsample_bytree=0.9,
-        scale_pos_weight=scale_pos_weight,
-        random_state=42,
-        n_jobs=-1,
-        verbosity=-1
-    )
+    lgbm_defaults = {
+        'n_estimators': 200,
+        'learning_rate': 0.05,
+        'max_depth': 5,
+        'subsample': 0.9,
+        'colsample_bytree': 0.9,
+        'scale_pos_weight': scale_pos_weight,
+        'random_state': 42,
+        'n_jobs': -1,
+        'verbosity': -1
+    }
+    lgbm_model = LGBMClassifier(**_apply_gpu_defaults(lgbm_defaults, 'lgbm', use_gpu))
 
     estimators = [
         ('rf', rf_model),
@@ -276,7 +332,8 @@ def _tune_base_models(
     scale_pos_weight: float,
     tuning_strategy: str = 'optuna',
     cv: int = 5,
-    n_trials: int = 50
+    n_trials: int = 50,
+    use_gpu: bool = False
 ) -> Tuple[List[Tuple[str, Any]], Dict[str, Dict]]:
     """
     각 기본 모델의 하이퍼파라미터를 튜닝합니다.
@@ -290,6 +347,14 @@ def _tune_base_models(
     - Random Forest: n_estimators, max_depth, min_samples_split
     - XGBoost: learning_rate, max_depth, subsample, colsample_bytree
     - LightGBM: learning_rate, num_leaves, max_depth
+    
+    Args:
+        X_train, y_train: 튜닝에 사용할 데이터
+        scale_pos_weight: 클래스 불균형 가중치
+        tuning_strategy: 사용할 탐색 기법
+        cv: 교차검증 전략/폴드 수
+        n_trials: 탐색 시도 횟수
+        use_gpu: GPU 가속 사용 여부
     
     Returns:
         Tuple[estimators, best_params]: (모델 리스트, 최적 파라미터 딕셔너리)
@@ -355,18 +420,20 @@ def _tune_base_models(
     print("\n🚀 XGBoost 튜닝 중...")
     if tuning_strategy == 'optuna':
         def xgb_factory(trial: optuna.Trial):
-            return XGBClassifier(
-                n_estimators=trial.suggest_int('n_estimators', 100, 500),
-                learning_rate=trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
-                max_depth=trial.suggest_int('max_depth', 3, 10),
-                subsample=trial.suggest_float('subsample', 0.6, 1.0),
-                colsample_bytree=trial.suggest_float('colsample_bytree', 0.6, 1.0),
-                scale_pos_weight=scale_pos_weight,
-                eval_metric="logloss",
-                random_state=42,
-                n_jobs=-1,
-                verbosity=0
-            )
+            params = {
+                'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+                'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
+                'max_depth': trial.suggest_int('max_depth', 3, 10),
+                'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                'scale_pos_weight': scale_pos_weight,
+                'eval_metric': "logloss",
+                'random_state': 42,
+                'n_jobs': -1,
+                'verbosity': 0
+            }
+            params = _apply_gpu_defaults(params, 'xgb', use_gpu)
+            return XGBClassifier(**params)
         xgb_best, xgb_params, xgb_score = optuna_tuner(
             xgb_factory, X_train, y_train,
             cv=cv, n_trials=n_trials, scoring='recall'
@@ -377,8 +444,13 @@ def _tune_base_models(
             'learning_rate': [0.01, 0.05, 0.1],
             'max_depth': [3, 5, 7]
         }
+        base_params = _apply_gpu_defaults({
+            'scale_pos_weight': scale_pos_weight,
+            'random_state': 42,
+            'verbosity': 0
+        }, 'xgb', use_gpu)
         xgb_best, xgb_params, xgb_score = grid_search_tuner(
-            XGBClassifier(scale_pos_weight=scale_pos_weight, random_state=42, verbosity=0),
+            XGBClassifier(**base_params),
             param_grid, X_train, y_train, cv=cv, scoring='recall'
         )
     elif tuning_strategy == 'random_search':
@@ -388,8 +460,13 @@ def _tune_base_models(
             'learning_rate': uniform(0.01, 0.29),
             'max_depth': randint(3, 10)
         }
+        base_params = _apply_gpu_defaults({
+            'scale_pos_weight': scale_pos_weight,
+            'random_state': 42,
+            'verbosity': 0
+        }, 'xgb', use_gpu)
         xgb_best, xgb_params, xgb_score = random_search_tuner(
-            XGBClassifier(scale_pos_weight=scale_pos_weight, random_state=42, verbosity=0),
+            XGBClassifier(**base_params),
             param_dist, X_train, y_train,
             cv=cv, n_iter=n_trials, scoring='recall'
         )
@@ -403,18 +480,20 @@ def _tune_base_models(
     print("\n💡 LightGBM 튜닝 중...")
     if tuning_strategy == 'optuna':
         def lgbm_factory(trial: optuna.Trial):
-            return LGBMClassifier(
-                n_estimators=trial.suggest_int('n_estimators', 100, 500),
-                learning_rate=trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
-                num_leaves=trial.suggest_int('num_leaves', 20, 100),
-                max_depth=trial.suggest_int('max_depth', 3, 10),
-                subsample=trial.suggest_float('subsample', 0.6, 1.0),
-                colsample_bytree=trial.suggest_float('colsample_bytree', 0.6, 1.0),
-                scale_pos_weight=scale_pos_weight,
-                random_state=42,
-                n_jobs=-1,
-                verbosity=-1
-            )
+            params = {
+                'n_estimators': trial.suggest_int('n_estimators', 100, 500),
+                'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3, log=True),
+                'num_leaves': trial.suggest_int('num_leaves', 20, 100),
+                'max_depth': trial.suggest_int('max_depth', 3, 10),
+                'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+                'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
+                'scale_pos_weight': scale_pos_weight,
+                'random_state': 42,
+                'n_jobs': -1,
+                'verbosity': -1
+            }
+            params = _apply_gpu_defaults(params, 'lgbm', use_gpu)
+            return LGBMClassifier(**params)
         lgbm_best, lgbm_params, lgbm_score = optuna_tuner(
             lgbm_factory, X_train, y_train,
             cv=cv, n_trials=n_trials, scoring='recall'
@@ -426,8 +505,13 @@ def _tune_base_models(
             'num_leaves': [31, 50, 70],
             'max_depth': [3, 5, 7]
         }
+        base_params = _apply_gpu_defaults({
+            'scale_pos_weight': scale_pos_weight,
+            'random_state': 42,
+            'verbosity': -1
+        }, 'lgbm', use_gpu)
         lgbm_best, lgbm_params, lgbm_score = grid_search_tuner(
-            LGBMClassifier(scale_pos_weight=scale_pos_weight, random_state=42, verbosity=-1),
+            LGBMClassifier(**base_params),
             param_grid, X_train, y_train, cv=cv, scoring='recall'
         )
     else:  # random_search
@@ -438,8 +522,13 @@ def _tune_base_models(
             'num_leaves': randint(20, 100),
             'max_depth': randint(3, 10)
         }
+        base_params = _apply_gpu_defaults({
+            'scale_pos_weight': scale_pos_weight,
+            'random_state': 42,
+            'verbosity': -1
+        }, 'lgbm', use_gpu)
         lgbm_best, lgbm_params, lgbm_score = random_search_tuner(
-            LGBMClassifier(scale_pos_weight=scale_pos_weight, random_state=42, verbosity=-1),
+            LGBMClassifier(**base_params),
             param_dist, X_train, y_train,
             cv=cv, n_iter=n_trials, scoring='recall'
         )
@@ -469,7 +558,8 @@ def train_voting_ensemble(
     voting: str = 'soft',
     n_splits: int = 5,
     n_trials: int = 50,
-    return_params: bool = False  # 파라미터 반환 여부
+    return_params: bool = False,  # 파라미터 반환 여부
+    use_gpu: bool = False
 ) -> Union[VotingClassifier, Tuple[VotingClassifier, Dict]]:
     """
     Voting Classifier 학습 (투표 기반 앙상블)
@@ -482,6 +572,8 @@ def train_voting_ensemble(
         voting: 'soft' (확률 평균) or 'hard' (다수결)
         n_splits: CV 폴드 수
         n_trials: 튜닝 시도 횟수
+        use_gpu: XGBoost/LightGBM 학습 시 GPU 사용 여부
+        use_gpu: XGBoost/LightGBM 학습 시 GPU 사용 여부
     
     Returns:
         VotingClassifier: 학습된 모델
@@ -499,7 +591,8 @@ def train_voting_ensemble(
         print("\n⚡ 튜닝된 파라미터 재사용")
         estimators = _create_base_models_from_params(
             best_params=best_params,
-            scale_pos_weight=scale_pos_weight
+            scale_pos_weight=scale_pos_weight,
+            use_gpu=use_gpu
         )
         extracted_params = best_params
     elif return_params:
@@ -511,7 +604,8 @@ def train_voting_ensemble(
             tuning_strategy=tuning_strategy,
             cv=cv_splitter,
             n_trials=n_trials,
-            return_params=True
+            return_params=True,
+            use_gpu=use_gpu
         )
     else:
         # 일반적인 경우
@@ -521,7 +615,8 @@ def train_voting_ensemble(
             y_train=y_train,
             tuning_strategy=tuning_strategy,
             cv=cv_splitter,
-            n_trials=n_trials
+            n_trials=n_trials,
+            use_gpu=use_gpu
         )
         extracted_params = None
 
@@ -552,7 +647,8 @@ def train_stacking_ensemble(
     final_estimator: Optional[Any] = None,
     n_splits: int = 5,
     n_trials: int = 50,
-    return_params: bool = False  # 파라미터 반환 여부
+    return_params: bool = False,  # 파라미터 반환 여부
+    use_gpu: bool = False
 ) -> Union[StackingClassifier, Tuple[StackingClassifier, Dict]]:
     """
     Stacking Classifier 학습 (스태킹 앙상블)
@@ -585,7 +681,8 @@ def train_stacking_ensemble(
         print("\n⚡ 튜닝된 파라미터 재사용")
         estimators = _create_base_models_from_params(
             best_params=best_params,
-            scale_pos_weight=scale_pos_weight
+            scale_pos_weight=scale_pos_weight,
+            use_gpu=use_gpu
         )
         extracted_params = best_params
     elif return_params:
@@ -597,7 +694,8 @@ def train_stacking_ensemble(
             tuning_strategy=tuning_strategy,
             cv=cv_splitter,
             n_trials=n_trials,
-            return_params=True
+            return_params=True,
+            use_gpu=use_gpu
         )
     else:
         # 일반적인 경우
@@ -607,7 +705,8 @@ def train_stacking_ensemble(
             y_train=y_train,
             tuning_strategy=tuning_strategy,
             cv=cv_splitter,
-            n_trials=n_trials
+            n_trials=n_trials,
+            use_gpu=use_gpu
         )
         extracted_params = None
 
