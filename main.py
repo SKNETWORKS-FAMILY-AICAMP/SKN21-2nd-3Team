@@ -104,8 +104,10 @@ def run(
                 cv_strategy=cv_strategy,  # 👈 통일된 CV 전략
                 tuning_strategy=tuning_strategy
             )
-        else:  # logistic
+        elif ensemble_strategy == 'logistic':
             model = train_logistic_regression(X_train, y_train)
+        elif ensemble_strategy == 'lgbm':
+            model = train_lgbm(X_train, y_train)
         
         # 평가
         metrics = evaluate_model(
@@ -184,8 +186,9 @@ if __name__ == '__main__':
         df=df,
         is_preprocess=True,
         is_feature_engineering=True,
-        cv_strategy='stratified_kfold',  # 'stratified_kfold', 'kfold', None
+        cv_strategy=None,  # 'stratified_kfold', 'kfold', None
         tuning_strategy=None,  # None, 'optuna', 'grid_search', 'random_search'
+<<<<<<< Updated upstream
         ensemble_strategy='stacking',  # 'stacking', 'voting', 'logistic', 'lgbm'
         is_save=True
     )
@@ -193,3 +196,8 @@ if __name__ == '__main__':
     # 결과 출력
     print(f"평균 F1: {results['summary']['f1']['mean']:.4f}")
     print(f"평균 Recall: {results['summary']['recall']['mean']:.4f}")
+=======
+        ensemble_strategy='logistic',  # 'stacking', 'voting', 'logistic', 'lgbm'
+        is_save=False
+    )
+>>>>>>> Stashed changes
