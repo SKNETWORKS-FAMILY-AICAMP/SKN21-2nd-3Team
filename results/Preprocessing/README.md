@@ -6,6 +6,10 @@
 
 ## EDA 결과
 
+✓ Feature Engineering 완료!
+생성된 파생 변수: Trans_Change_Ratio, Inactivity_Score, Engagement_Score, Utilization_Risk_Level
+최종 데이터 shape: (10127, 34)
+
 ### (1) 결측치
 
 - 결측치가 있는 컬럼: Education_Level - 1519, Income_Category - 1112,Marital_Status-749
@@ -23,23 +27,52 @@
 
 ### (2) 이상치
 
-- 이상치 판정 기준이 무엇인가?: 코드 상에선 명시적인 이상치 탐지/제거 로직(IQR, z-score 등)'은 구현되어 있지 않음.
-   -  단 완전 이상치에 있어서 완전 무시하지는 않고, 간접적으로 완화되는 부분은 감지: 
-      - 0 → 평균값 대체 로직: 만약 어떤 컬럼에서 0이 비정상적으로 많다면, 그 값들을 평균으로 치환 되면서 분포가 조금 더 부드러워짐. 
+* 이상치 판정 기준이 무엇인가?: 
+   - 코드 상에선 명시적인 이상치 탐지/제거 로직(IQR, z-score 등)'은 구현되어 있지 않음.
 
-   - 
+* 어떻게 처리했는가?: 
+   - 명시적인 이상치가 구현이 안돼있다고 해도, 완전히 무시하지는 않고, 간접적으로 완화되는 부분은 감지: 
+      - 0 → 평균값 대체 로직: 만약 어떤 컬럼에서 0이 비정상적으로 많다면, 그 값들을 평균으로 치환 되면서 분포가 조금 더 부드러워짐.
 
+* 왜 그렇게 처리 했는가?:
+    - 고객 행동 데이터에서는 이상치처럼 보이는 값도 실제로 중요한 “특이 행동 패턴”일 수 있기 때문.
+        
+        Ex:
+         - 거래가 갑자기 폭증 → 사용률이 비정상적으로 높음 → 오히려 이탈 신호일 수도 있음.
 
-- 어떻게 처리했는가?
-- 왜 그렇게 처리 했는가?
+            따라서:
+                단순히 통계 기준(IQR, z-score)만으로 강하게 자르기보다는 모델이 스스로 학습하도록 두고,
+                추후 모델 성능/Feature Importance를 보며 필요할 때만 추가로 처리하는 방향을 선택.
 
 ### (3) 기타 전처리 방법
 
-- feature들과 target_col의 상관관계
-- 상관관계 계수가 높은 feature 처리방법
-- target_col과의 상관관계 계수 절대값이 높은 feature 처리방법
-- 범주형 데이터 인코딩 방법 (인코딩 된 컬럼을 대신 사용)
-- etc...
+* feature들과 target_col의 상관관계:
+
+- Feature들과 target_col(Attrition_Binary)의 상관관계
+  - 타겟: Attrition_Binary (이탈: 1, 유지: 0)
+     - 코드: corr_with_target = df.corr(numeric_only=True)["Attrition_Binary"].sort_values(ascending=False)
+print(corr_with_target)
+
+- 이 상관계수를 통해:
+   - 어떤 Feature가 이탈과 양(+)의 관계인지
+   - 어떤 Feature가 이탈과 음(-)의 관계인지
+   - 강하게 붙어 있는지(절대값이 큰지)를 확인.
+
+- 이 결과를 참고해서: 
+   - Engagement_Score, Inactivity_Score 같은 파생변수를 설계했고
+   - 거래 관련 변수를 묶어주는 방향의 Feature Engineering을 진행
+
+* 상관관계 계수가 높은 feature 처리방법: 
+   - 두 Feature 간 상관계수가 |corr| > 0.85처럼 매우 높으면, 둘 다 거의 같은 정보를 가지고 있다고 볼 수 있음.
+   - 그 경우:
+        - 의미 해석이 더 쉬운 컬럼 하나만 남기거나
+        - 둘을 합쳐서 요약 Feature (점수/비율) 로 바꾸는 전략 사용.
+
+* target_col과의 상관관계 계수 절대값이 높은 feature 처리방법:
+    - 타겟과의 상관관계 절대값이 높은 Feature는 기본적으로 모델에 포함하되,교차 검증을 통해 과적합 여부를 확인하고, 필요한 경우 정규화 및 규제를 통해 안정성을 확보.
+
+* 범주형 데이터 인코딩 방법 (인코딩 된 컬럼을 대신 사용): 
+    - 범주형 Feature는 pd.get_dummies(drop_first=True)를 통해 One-Hot Encoding 하였으며, 기준 카테고리를 하나 제거(k-1 인코딩)하여 다중공선성을 완화.인코딩 이후에는 원본 범주형 컬럼 대신 인코딩된 더미 컬럼을 사용.
 
 ## 적용한 Feature Engineering 방식
 
