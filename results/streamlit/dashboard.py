@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
-from utils import load_model, predict_churn
+from utils import load_data, load_model, predict_churn
 
 def show_dashboard(df: pd.DataFrame):
     """
     Displays the main dashboard with customer data.
     """
     st.markdown("## 👥 고객 정보 관리")
-    
+
     # Initialize session state for prediction results
     if 'prediction_done' not in st.session_state:
         st.session_state.prediction_done = False
@@ -29,7 +29,7 @@ def show_dashboard(df: pd.DataFrame):
 
     # Top metrics
     total_customers = len(df)
-    
+
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric(label="총 고객 수", value=f"{total_customers:,} 명")
@@ -43,10 +43,10 @@ def show_dashboard(df: pd.DataFrame):
         df_display = df
 
     st.markdown("---")
-    
+
     # Data Table
     st.markdown("### 고객 데이터 목록")
-    
+
     # Column Configuration for formatting
     column_config = {
         "신용한도": st.column_config.NumberColumn(format="%.1f"),
@@ -59,12 +59,12 @@ def show_dashboard(df: pd.DataFrame):
         "평균 신용 사용률": st.column_config.NumberColumn(format="%.3f"),
         "이탈 확률": st.column_config.NumberColumn(format="%.2%"),
     }
-    
+
     # Pagination Settings
     PAGE_SIZE = 1000
     total_rows = len(df_display)
     total_pages = (total_rows - 1) // PAGE_SIZE + 1
-    
+
     # Initialize session state for page number if not exists
     if 'current_page' not in st.session_state:
         st.session_state.current_page = 1
@@ -81,7 +81,7 @@ def show_dashboard(df: pd.DataFrame):
     start_idx = (current_page - 1) * PAGE_SIZE
     end_idx = min(start_idx + PAGE_SIZE, total_rows)
     df_page = df_display.iloc[start_idx:end_idx]
-    
+
     st.caption(f"총 {total_rows:,}개 데이터 중 {start_idx+1:,} - {end_idx:,} 표시")
 
     # Apply styling if prediction is done
@@ -171,3 +171,7 @@ def show_dashboard(df: pd.DataFrame):
             if cols[-1].button("▶", disabled=(end_page == total_pages), key="next_page"):
                 st.session_state.current_page = min(total_pages, end_page + 1)
                 st.rerun()
+
+
+df = load_data()
+show_dashboard(df)
