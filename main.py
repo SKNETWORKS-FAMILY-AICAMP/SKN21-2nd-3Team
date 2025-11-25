@@ -1,4 +1,4 @@
-from re import T
+import numpy as np
 import pandas as pd
 import os
 import joblib
@@ -34,9 +34,13 @@ def run(
         df = feature_engineering_pipeline(df)
     else:
         print("is_feature_engineering is False")
+
     print(df.shape)
     cols = df.drop(columns=('Attrition_Binary'))
     features = cols.columns.tolist()
+    f1_list=[]
+    roc_list=[]
+
     if is_cv:
         folds = stratified_kfold_split(df, target_col=target_col, n_splits=5, shuffle=True, random_state=42)
         for i, (train_idx, test_idx) in enumerate(folds):
@@ -55,7 +59,9 @@ def run(
                     model = train_voting_ensemble(X_train, y_train) # ensemble.py
             else:
                 model = train_logistic_regression(X_train, y_train)
-            evaluate_model(model, X_test, y_test, fold_num=i, n_splits=5)
+            f1, roc = evaluate_model(model, X_test, y_test, fold_num=i, n_splits=5)
+            f1_list.append(f1)
+            roc_list.append(roc)
     else:
         # 일반적인 Fold
         X_train, X_test, y_train, y_test = split_train_test(df, target_col)
@@ -67,7 +73,11 @@ def run(
         else:
             model = train_logistic_regression(X_train, y_train)
         evaluate_model(model, X_test, y_test, fold_num=None, n_splits=None)
-
+    print("============= 최종 평가 결과 =============")
+    print(f"f1_list: {f1_list}")
+    print(f"roc_list: {roc_list}")
+    print(f"f1_mean: {np.mean(f1_list)}")
+    print(f"roc_mean: {np.mean(roc_list)}")
     if is_save:
         save_dir = 'results/Final_Model'
         os.makedirs(save_dir, exist_ok=True)
@@ -82,7 +92,7 @@ if __name__ == '__main__':
     run(
         df=df,
         is_preprocess=True,
-        is_feature_engineering=True,
+        is_feature_engineering=False,
         is_cv=True,
         tuning_strategy='optuna', # grid_search, random_search, optuna
         ensemble_strategy='stacking', # voting, stacking

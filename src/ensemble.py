@@ -155,3 +155,5 @@ def evaluate_model(
     print(f"precision: {precision:.4f}")
     print("\n분류 리포트:")
     print(classification_report(y_test, y_pred))
+
+    return f1, roc
