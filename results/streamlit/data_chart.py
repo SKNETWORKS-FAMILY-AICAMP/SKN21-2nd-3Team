@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import seaborn as sns
 import matplotlib.pyplot as plt
 from xgboost import XGBClassifier
+import os
 
 
 # =====================================================
@@ -12,8 +13,9 @@ from xgboost import XGBClassifier
 # =====================================================
 @st.cache_data
 def load_data():
-    df = pd.read_csv(r"C:\skn-2nd-3team\data\BankChurners.csv")
-
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(current_dir, '../../data/BankChurners.csv')
+    df = pd.read_csv(data_path)
     df["Attrition_binary"] = df["Attrition_Flag"].map({
         "Existing Customer": 0,
         "Attrited Customer": 1
