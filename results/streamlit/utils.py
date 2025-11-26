@@ -89,7 +89,7 @@ def load_model():
     Loads the trained Logistic Regression model.
     """
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    model_path = os.path.join(current_dir, '../../results/Final_Model/stacking_model.joblib')
+    model_path = os.path.join(current_dir, '../../results/Final_Model/ensemble/stacking_model.joblib')
     
     if not os.path.exists(model_path):
         st.error(f"Model file not found at: {model_path}")
