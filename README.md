@@ -65,9 +65,9 @@ skn-2nd-3team/
 
 ## 5️⃣ 수집 데이터 설명
 
-| 데이터명           | 출처                         | 기간    | 주요 컬럼                                                                                                                                                              | 비고               |
+| 데이터명           | 출처                         |  주요 컬럼                                                                                                                                                              | 비고               |
 | ------------------ | ---------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| `BankChurners.csv` | Kaggle (Bank Customer Churn) | 2020‑12 | `CustomerID`, `Gender`, `Age`, `IncomeCategory`, `EducationLevel`, `CardCategory`, `MonthsOnBook`, `TotalTransactionCount`, `TotalTransactionAmount`, `Attrition_Flag` | 결측치·이상치 존재 |
+| `BankChurners.csv` | Kaggle (Bank Customer Churn) |  `CustomerID`, `Gender`, `Age`, `IncomeCategory`, `EducationLevel`, `CardCategory`, `MonthsOnBook`, `TotalTransactionCount`, `TotalTransactionAmount`, `Attrition_Flag` |  |
 
 > **NOTE**: 실제 데이터셋에 맞춰 컬럼·통계 정보를 업데이트하세요.
 
