@@ -72,7 +72,7 @@ def run(
                 X_full, y_full,
                 cv_strategy=cv_strategy,
                 tuning_strategy=tuning_strategy,
-                n_trials=100,
+                n_trials=50,
                 return_params=True
             )
         

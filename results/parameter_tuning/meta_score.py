@@ -176,7 +176,7 @@ def save_results(df, output_file="n_trials_comparison.csv"):
 # =========================
 # 메인 함수
 # =========================
-def main(input_file="n_trials_comparison.csv", output_file=None):
+def main(input_file="past_data.csv", output_file=None):
     """
     메인 실행 함수
     
