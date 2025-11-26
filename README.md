@@ -29,7 +29,7 @@
 ## 3️⃣ 주요 기능
 
 - **이탈 확률 예측** – 입력된 고객 정보(거래·인구통계)로 이탈 가능성을 실시간 예측.
-- **시각화 대시보드 (Streamlit)** – 전체 고객 이탈 분포, 이탈 위험 고객 상세 리포트.
+- **이탈 예방 리텐션 마케팅(Streamlit)** – 이탈 위험도에 따라 각 회원의 이용 패턴에 최적화된 피드백 및 메시지발송
 
 ---
 
@@ -67,7 +67,7 @@ skn-2nd-3team/
 
 | 데이터명           | 출처                         | 주요 컬럼                                                                                                                                                              | 비고 |
 |--------------------|------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------|
-| `BankChurners.csv` | Kaggle (Bank Customer Churn) | `CustomerID`, `Gender`, `Age`, `IncomeCategory`, `EducationLevel`, `CardCategory`, `MonthsOnBook`, `TotalTransactionCount`, `TotalTransactionAmount`, `Attrition_Flag` |      |
+| `BankChurners.csv` | Kaggle (Bank Customer Churn) | `Gender`, `Age`, `IncomeCategory`, `EducationLevel`, `CardCategory`, `MonthsOnBook`, `TotalTransactionCount`, `TotalTransactionAmount`, `Attrition_Flag` |      |
 
 ![columns_to_korean](./data/images/04_columns_to_korean.png)
 
