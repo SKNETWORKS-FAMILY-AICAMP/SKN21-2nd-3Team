@@ -72,7 +72,7 @@ def run(
                 X_full, y_full,
                 cv_strategy=cv_strategy,
                 tuning_strategy=tuning_strategy,
-                n_trials=100,
+                n_trials=50,
                 return_params=True
             )
         
@@ -209,6 +209,6 @@ if __name__ == '__main__':
         is_feature_engineering=True,
         cv_strategy='stratified_kfold',  # 'stratified_kfold', 'kfold', None
         tuning_strategy='optuna',  # None, 'optuna', 'grid_search', 'random_search'
-        ensemble_strategy='stacking',  # 'stacking', 'voting', 'logistic'
+        ensemble_strategy='voting',  # 'stacking', 'voting', 'logistic'
         is_save=False
     )
