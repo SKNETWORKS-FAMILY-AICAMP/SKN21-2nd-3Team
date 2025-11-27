@@ -1,7 +1,4 @@
 import streamlit as st
-import sys
-import os
-from utils import load_data
 
 st.set_page_config(
     page_title="SKN 2기 3팀 - 고객 관리 시스템",

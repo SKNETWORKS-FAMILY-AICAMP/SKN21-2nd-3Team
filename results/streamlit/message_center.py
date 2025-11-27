@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import time
-from utils import load_data, load_model, predict_churn
-
 
 def show_message_center(): 
 
